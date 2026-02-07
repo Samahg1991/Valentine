@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Valentine?</title>
+
+<style>
+  body{
+    margin:0;
+    height:100vh;
+    display:grid;
+    place-items:center;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    background: linear-gradient(135deg, #f0dede, #f7f7f7);
+    overflow:hidden;
+  }
+
+  .card{
+    width:min(520px, 92vw);
+    background:#f2f2f2;
+    border-radius:22px;
+    padding:34px 24px 40px;
+    box-shadow:0 14px 35px rgba(0,0,0,.18);
+    text-align:center;
+    position:relative;
+    z-index:2;
+  }
+
+  h1{
+    margin:0 0 36px;
+    font-size:clamp(22px, 4vw, 32px);
+    font-weight:700;
+  }
+
+  .buttons{
+    position:relative;
+    height:120px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:36px;
+  }
+
+  button{
+    border:0;
+    padding:14px 34px;
+    border-radius:999px;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    box-shadow:0 8px 18px rgba(0,0,0,.15);
+    user-select:none;
+    transition: transform .2s ease, background-color .25s ease;
+  }
+
+  #yes{
+    background:#d94a3a;
+    color:#fff;
+  }
+
+  #no{
+    background:#111;
+    color:#fff;
+    position:relative;
+  }
+
+  #no.moving{
+    position:absolute;
+    left:65%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    transition:left .18s ease, top .18s ease, opacity .25s ease;
+  }
+
+  /* زر Yes بعد الاختيار */
+  #yes.chosen{
+    background:#0a1f44; /* كحلي */
+    color:#fff;
+  }
+
+  .msg{
+    margin-top:18px;
+    font-size:16px;
+    font-weight:600;
+    min-height:22px;
+    color:#333;
+  }
+
+  /* صورة النتيجة */
+  .result-img{
+    display:none;
+    margin-top:50px;
+    max-width:200px;
+    width:100%;
+    border-radius:16px;
+    animation: fadeIn .6s ease forwards;
+  }
+
+.result-img.show{
+display:block;
+margin-left:auto;
+margin-right:auto;
+}
+
+  @keyframes fadeIn{
+    from{ opacity:0; transform:scale(.85); }
+    to{ opacity:1; transform:scale(1); }
+  }
+
+  /* قلوب */
+  .heart{
+    position:fixed;
+    left:0;
+    top:0;
+    font-size:20px;
+    opacity:.85;
+    pointer-events:none;
+    animation: floatUp linear forwards;
+    z-index:1;
+  }
+
+  @keyframes floatUp{
+    from{ transform: translate(var(--x), 110vh) scale(var(--s)); opacity:0; }
+    10%{ opacity:1; }
+    to{ transform: translate(var(--x), -15vh) scale(var(--s)); opacity:0; }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h1>Would you be my Valentine? 💘</h1>
+
+  <div class="buttons" id="arena">
+    <button id="yes">Yes</button>
+    <button id="no">No</button>
+  </div>
+
+  <div class="msg" id="msg"></div>
+
+  <!-- 👇 صورة الـ GIF -->
+  <img src="1.gif" id="loveImg" class="result-img" alt="Love Gif">
+</div>
+
+<script>
+  const noBtn  = document.getElementById("no");
+  const yesBtn = document.getElementById("yes");
+  const arena  = document.getElementById("arena");
+  const msg    = document.getElementById("msg");
+  const img    = document.getElementById("loveImg");
+
+  let yesScale = 1;
+  let dodges = 0;
+  const hideAfter = 15;
+  let started = false;
+
+  /* قلوب */
+  const hearts = ["💖","💘","💕","💞","❤️","💗"];
+  function spawnHeart(){
+    const h = document.createElement("div");
+    h.className = "heart";
+    h.textContent = hearts[Math.floor(Math.random()*hearts.length)];
+    h.style.setProperty("--x", Math.random()*100 + "vw");
+    h.style.setProperty("--s", 0.6 + Math.random()*1.4);
+    h.style.animationDuration = (2.5 + Math.random()*3) + "s";
+    document.body.appendChild(h);
+    setTimeout(()=>h.remove(), 6000);
+  }
+  setInterval(spawnHeart, 180);
+
+  function growYes(){
+    yesScale += 0.06;
+    yesBtn.style.transform = `scale(${yesScale})`;
+  }
+
+  function overlapsYes(x,y){
+    const a = arena.getBoundingClientRect();
+    const yR = yesBtn.getBoundingClientRect();
+    const w = noBtn.offsetWidth;
+    const h = noBtn.offsetHeight;
+    const gap = 30;
+
+    const n = {
+      left: a.left + x,
+      right: a.left + x + w,
+      top: a.top + y,
+      bottom: a.top + y + h
+    };
+
+    return !(
+      n.right < yR.left - gap ||
+      n.left  > yR.right + gap ||
+      n.bottom < yR.top - gap ||
+      n.top > yR.bottom + gap
+    );
+  }
+
+  function moveNo(){
+    if(noBtn.style.display === "none") return;
+
+    if(!started){
+      const r = noBtn.getBoundingClientRect();
+      const a = arena.getBoundingClientRect();
+      noBtn.classList.add("moving");
+      noBtn.style.left = (r.left - a.left) + "px";
+      noBtn.style.top  = (r.top  - a.top)  + "px";
+      started = true;
+    }
+
+    const a = arena.getBoundingClientRect();
+    const pad = 10;
+    let x,y,tries=0;
+
+    do{
+      x = pad + Math.random() * (a.width - noBtn.offsetWidth - pad);
+      y = pad + Math.random() * (a.height - noBtn.offsetHeight - pad);
+      tries++;
+    } while(overlapsYes(x,y) && tries < 80);
+
+    noBtn.style.left = x + "px";
+    noBtn.style.top  = y + "px";
+
+    dodges++;
+    growYes();
+
+    if(dodges >= hideAfter){
+      noBtn.style.opacity = "0";
+      setTimeout(()=>{
+        noBtn.style.display = "none";
+        msg.innerHTML = '<span style="color:#0a1f44;font-weight:700;">"No"</span> option has been removed 😄 Just say Yes 💖';
+      }, 250);
+    }
+  }
+
+  noBtn.addEventListener("mouseenter", moveNo);
+  noBtn.addEventListener("mouseover", moveNo);
+  noBtn.addEventListener("touchstart", (e)=>{
+    e.preventDefault();
+    moveNo();
+  });
+
+  yesBtn.addEventListener("click", ()=>{
+    msg.innerHTML = '<span style="color:#0a1f44;font-weight:700;"></span> Perfect Choice !!! 💖 my Valentine 😄';
+    noBtn.style.display = "none";
+
+    yesBtn.textContent = "🎉 يا وعدي 🎉";
+    yesBtn.classList.add("chosen");
+    yesBtn.disabled = true;
+    yesBtn.style.cursor = "default";
+
+    document.getElementById("loveImg").classList.add("show"); // 👈 إظهار الـ GIF
+  });
+</script>
+
+</body>
+</html>
